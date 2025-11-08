@@ -12,6 +12,15 @@ export interface Candy {
   isNew: boolean; // track if candy is newly spawned
 }
 
+export interface Snowflake {
+  x: number;
+  y: number;
+  size: number;
+  speed: number;
+  drift: number;
+  opacity: number;
+}
+
 export interface GameState {
   grid: (Candy | null)[][];
   gridWidth: number;
@@ -25,6 +34,13 @@ export interface GameState {
   points: number;
   tries: number;
   candyColors: string[];
+  revealedCells: boolean[][]; // Track which cells have been revealed
+  isRevealing: boolean; // True when doing the final reveal animation
+  revealProgress: number; // 0 to 1 for color fade-in
+  candyFadeOut: number; // 0 to 1 for candy fade-out during reveal
+  gridFadeOut: number; // 0 to 1 for grid fade-out during reveal
+  snowflakes: Snowflake[]; // Snow particles for final animation
+  isComplete: boolean; // True when reveal is fully complete
 }
 
 export class CandyCrushGame {
@@ -43,6 +59,20 @@ export class CandyCrushGame {
   private readonly REMOVAL_SPEED = 0.02; // How fast candies scale down when removed
   private readonly FADE_SPEED = 0.03; // How fast new candies fade in
   private readonly PAUSE_DURATION = 30; // Frames to pause after removal
+
+  // Background image reveal
+  private readonly REVEAL_THRESHOLD = 0.01; // 30% of cells revealed triggers full reveal
+  private readonly REVEAL_SPEED = 0.3; // Speed of final reveal animation
+  private readonly CANDY_FADEOUT_SPEED = 0.02; // Speed of candy fade during reveal
+  private readonly GRID_FADEOUT_SPEED = 0.02; // Speed of grid fade during reveal
+
+  // Snow animation
+  private readonly SNOW_COUNT = 100; // Number of snowflakes
+  private readonly SNOW_MIN_SIZE = 2;
+  private readonly SNOW_MAX_SIZE = 6;
+  private readonly SNOW_MIN_SPEED = 0.5;
+  private readonly SNOW_MAX_SPEED = 2;
+  private readonly SNOW_DRIFT_AMOUNT = 1; // Horizontal drift speed
 
   // Layout configuration
   private readonly HEADER_HEIGHT = 60; // Space for title and stats
@@ -79,12 +109,17 @@ export class CandyCrushGame {
   private state: GameState;
   private offsetX = 0;
   private offsetY = 0;
+  private backgroundImage: HTMLImageElement | null = null;
+  private imageLoaded = false;
 
-  constructor(gridWidth: number = 8, gridHeight: number = 8) {
+  constructor(gridWidth: number = 8, gridHeight: number = 8, backgroundImagePath?: string) {
+    const width = gridWidth || this.DEFAULT_GRID_WIDTH;
+    const height = gridHeight || this.DEFAULT_GRID_HEIGHT;
+
     this.state = {
       grid: [],
-      gridWidth: gridWidth || this.DEFAULT_GRID_WIDTH,
-      gridHeight: gridHeight || this.DEFAULT_GRID_HEIGHT,
+      gridWidth: width,
+      gridHeight: height,
       cellSize: this.DEFAULT_CELL_SIZE,
       selectedCandy: null,
       isFalling: false,
@@ -94,9 +129,31 @@ export class CandyCrushGame {
       points: 0,
       tries: 0,
       candyColors: this.CANDY_COLORS,
+      revealedCells: Array(height)
+        .fill(null)
+        .map(() => Array(width).fill(false)),
+      isRevealing: false,
+      revealProgress: 0,
+      candyFadeOut: 1,
+      gridFadeOut: 1,
+      snowflakes: [],
+      isComplete: false,
     };
 
     this.initializeGrid();
+
+    // Load background image if provided
+    if (backgroundImagePath) {
+      this.loadBackgroundImage(backgroundImagePath);
+    }
+  }
+
+  private loadBackgroundImage(path: string) {
+    this.backgroundImage = new Image();
+    this.backgroundImage.onload = () => {
+      this.imageLoaded = true;
+    };
+    this.backgroundImage.src = path;
   }
 
   private initializeGrid() {
@@ -148,6 +205,17 @@ export class CandyCrushGame {
   }
 
   update() {
+    // Handle final reveal animation
+    if (this.state.isRevealing) {
+      this.updateRevealAnimation();
+    }
+
+    // Update snow if complete
+    if (this.state.isComplete) {
+      this.updateSnow();
+      return; // Don't update game logic anymore
+    }
+
     // Handle pause after removal
     if (this.state.isPaused) {
       this.state.pauseTimer--;
@@ -297,9 +365,17 @@ export class CandyCrushGame {
       if (candy) {
         candy.markedForRemoval = true;
       }
+      // Mark cell as revealed
+      this.state.revealedCells[y][x] = true;
     });
     this.state.isRemoving = true;
     this.state.points += matches.length * 10;
+
+    // Check if we've reached the reveal threshold
+    const revealPercentage = this.getRevealPercentage();
+    if (revealPercentage >= this.REVEAL_THRESHOLD && !this.state.isRevealing) {
+      this.startFullReveal();
+    }
   }
 
   private updateFadeIn() {
@@ -344,6 +420,99 @@ export class CandyCrushGame {
     }
   }
 
+  private getRevealPercentage(): number {
+    let revealedCount = 0;
+    const totalCells = this.state.gridWidth * this.state.gridHeight;
+
+    for (let y = 0; y < this.state.gridHeight; y++) {
+      for (let x = 0; x < this.state.gridWidth; x++) {
+        if (this.state.revealedCells[y][x]) {
+          revealedCount++;
+        }
+      }
+    }
+
+    return revealedCount / totalCells;
+  }
+
+  private startFullReveal() {
+    this.state.isRevealing = true;
+    this.state.revealProgress = 0;
+    this.state.candyFadeOut = 1;
+    this.state.gridFadeOut = 1;
+  }
+
+  private initializeSnow() {
+    this.state.snowflakes = [];
+    for (let i = 0; i < this.SNOW_COUNT; i++) {
+      this.state.snowflakes.push({
+        x: Math.random() * 100, // Position as percentage
+        y: Math.random() * 100,
+        size: this.SNOW_MIN_SIZE + Math.random() * (this.SNOW_MAX_SIZE - this.SNOW_MIN_SIZE),
+        speed: this.SNOW_MIN_SPEED + Math.random() * (this.SNOW_MAX_SPEED - this.SNOW_MIN_SPEED),
+        drift: (Math.random() - 0.5) * this.SNOW_DRIFT_AMOUNT,
+        opacity: 0.3 + Math.random() * 0.7,
+      });
+    }
+  }
+
+  private updateRevealAnimation() {
+    // First fade out all candies and grid
+    if (this.state.candyFadeOut > 0) {
+      this.state.candyFadeOut -= this.CANDY_FADEOUT_SPEED;
+      if (this.state.candyFadeOut < 0) {
+        this.state.candyFadeOut = 0;
+      }
+    }
+
+    if (this.state.gridFadeOut > 0) {
+      this.state.gridFadeOut -= this.GRID_FADEOUT_SPEED;
+      if (this.state.gridFadeOut < 0) {
+        this.state.gridFadeOut = 0;
+      }
+    }
+
+    // Once candies are faded, reveal all cells and fade to color
+    if (this.state.candyFadeOut === 0 && this.state.gridFadeOut === 0) {
+      // Reveal all cells
+      for (let y = 0; y < this.state.gridHeight; y++) {
+        for (let x = 0; x < this.state.gridWidth; x++) {
+          this.state.revealedCells[y][x] = true;
+        }
+      }
+
+      // Fade to color
+      this.state.revealProgress += this.REVEAL_SPEED;
+      if (this.state.revealProgress >= 1) {
+        this.state.revealProgress = 1;
+        // Animation complete - start snow
+        if (!this.state.isComplete) {
+          this.state.isComplete = true;
+          this.initializeSnow();
+        }
+      }
+    }
+  }
+
+  private updateSnow() {
+    for (const snowflake of this.state.snowflakes) {
+      // Move snowflake down and drift horizontally
+      snowflake.y += snowflake.speed;
+      snowflake.x += snowflake.drift;
+
+      // Wrap around when snowflake goes off screen
+      if (snowflake.y > 100) {
+        snowflake.y = -5;
+        snowflake.x = Math.random() * 100;
+      }
+      if (snowflake.x < -5) {
+        snowflake.x = 105;
+      } else if (snowflake.x > 105) {
+        snowflake.x = -5;
+      }
+    }
+  }
+
   handleClick(canvasX: number, canvasY: number) {
     const gridX = Math.floor((canvasX - this.offsetX) / this.state.cellSize);
     const gridY = Math.floor((canvasY - this.offsetY) / this.state.cellSize);
@@ -352,8 +521,8 @@ export class CandyCrushGame {
       return;
     }
 
-    if (this.state.isFalling || this.state.isRemoving || this.state.isPaused) {
-      return; // Don't allow clicks during animation or pause
+    if (this.state.isFalling || this.state.isRemoving || this.state.isPaused || this.state.isRevealing) {
+      return; // Don't allow clicks during animation, pause, or reveal
     }
 
     if (!this.state.selectedCandy) {
@@ -438,7 +607,14 @@ export class CandyCrushGame {
     ctx.fillStyle = this.GRID_BACKGROUND_COLOR;
     ctx.fillRect(this.offsetX, this.offsetY, gridPixelWidth, gridPixelHeight);
 
-    // Draw grid lines
+    // Draw background image if loaded
+    if (this.imageLoaded && this.backgroundImage) {
+      this.drawBackgroundImage(ctx, gridPixelWidth, gridPixelHeight);
+    }
+
+    // Draw grid lines with fade out
+    ctx.save();
+    ctx.globalAlpha = this.state.gridFadeOut;
     ctx.strokeStyle = this.GRID_LINE_COLOR;
     ctx.lineWidth = 1;
     for (let x = 0; x <= this.state.gridWidth; x++) {
@@ -453,6 +629,7 @@ export class CandyCrushGame {
       ctx.lineTo(this.offsetX + gridPixelWidth, this.offsetY + y * this.state.cellSize);
       ctx.stroke();
     }
+    ctx.restore();
 
     // Draw candies
     for (let y = 0; y < this.state.gridHeight; y++) {
@@ -472,6 +649,11 @@ export class CandyCrushGame {
       const inset = this.SELECTION_LINE_WIDTH / 2;
       ctx.strokeRect(this.offsetX + x * this.state.cellSize + inset, this.offsetY + y * this.state.cellSize + inset, this.state.cellSize - this.SELECTION_LINE_WIDTH, this.state.cellSize - this.SELECTION_LINE_WIDTH);
     }
+
+    // Draw snow if game is complete
+    if (this.state.isComplete) {
+      this.drawSnow(ctx, width, height);
+    }
   }
 
   private drawCandy(ctx: CanvasRenderingContext2D, candy: Candy) {
@@ -483,8 +665,8 @@ export class CandyCrushGame {
     ctx.translate(centerX, centerY);
     ctx.scale(candy.scale, candy.scale);
 
-    // Apply opacity
-    ctx.globalAlpha = candy.opacity;
+    // Apply opacity (including fade out during reveal)
+    ctx.globalAlpha = candy.opacity * this.state.candyFadeOut;
 
     // Draw candy as a circle with a highlight
     ctx.fillStyle = this.state.candyColors[candy.type];
@@ -497,6 +679,64 @@ export class CandyCrushGame {
     ctx.beginPath();
     ctx.arc(-radius * 0.3, -radius * 0.3, radius * 0.4, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.restore();
+  }
+
+  private drawBackgroundImage(ctx: CanvasRenderingContext2D, gridPixelWidth: number, gridPixelHeight: number) {
+    if (!this.backgroundImage) return;
+
+    ctx.save();
+
+    // Calculate scaling to cover the grid area
+    const scaleX = gridPixelWidth / this.backgroundImage.width;
+    const scaleY = gridPixelHeight / this.backgroundImage.height;
+    const scale = Math.max(scaleX, scaleY);
+
+    const scaledWidth = this.backgroundImage.width * scale;
+    const scaledHeight = this.backgroundImage.height * scale;
+
+    // Center the image
+    const imageX = this.offsetX + (gridPixelWidth - scaledWidth) / 2;
+    const imageY = this.offsetY + (gridPixelHeight - scaledHeight) / 2;
+
+    // Create clipping path for revealed cells
+    ctx.beginPath();
+    for (let y = 0; y < this.state.gridHeight; y++) {
+      for (let x = 0; x < this.state.gridWidth; x++) {
+        if (this.state.revealedCells[y][x]) {
+          ctx.rect(this.offsetX + x * this.state.cellSize, this.offsetY + y * this.state.cellSize, this.state.cellSize, this.state.cellSize);
+        }
+      }
+    }
+    ctx.clip();
+
+    // Apply grayscale filter (fades from grayscale to color based on revealProgress)
+    const grayscaleAmount = 1 - this.state.revealProgress;
+    if (grayscaleAmount > 0) {
+      ctx.filter = `grayscale(${grayscaleAmount * 100}%)`;
+    }
+
+    // Draw the image
+    ctx.drawImage(this.backgroundImage, imageX, imageY, scaledWidth, scaledHeight);
+
+    ctx.restore();
+  }
+
+  private drawSnow(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    ctx.save();
+
+    for (const snowflake of this.state.snowflakes) {
+      // Convert percentage position to pixels
+      const x = (snowflake.x / 100) * width;
+      const y = (snowflake.y / 100) * height;
+
+      ctx.globalAlpha = snowflake.opacity;
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.arc(x, y, snowflake.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }

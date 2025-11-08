@@ -2,6 +2,7 @@ import { Canvas } from "./Canvas";
 import { CandyCrushGame } from "./CandyCrushGame";
 import "./App.css";
 import { useEffect, useRef, useState } from "react";
+import backgroundImage from "./assets/fotos/2.jpeg";
 
 function App() {
   const gameRef = useRef<CandyCrushGame | null>(null);
@@ -9,8 +10,8 @@ function App() {
   const [, forceUpdate] = useState({});
 
   useEffect(() => {
-    // Initialize game
-    gameRef.current = new CandyCrushGame(8, 8);
+    // Initialize game with background image
+    gameRef.current = new CandyCrushGame(8, 8, backgroundImage);
     forceUpdate({});
   }, []);
 
@@ -30,7 +31,7 @@ function App() {
   const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!gameRef.current) return;
 
-    const canvas = event.currentTarget.querySelector('canvas');
+    const canvas = event.currentTarget.querySelector("canvas");
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
