@@ -1,41 +1,47 @@
 import { Canvas } from "./Canvas";
+import { CandyCrushGame } from "./CandyCrushGame";
 import "./App.css";
+import { useEffect, useRef, useState } from "react";
 
 function App() {
+  const gameRef = useRef<CandyCrushGame | null>(null);
+  const lastTimeRef = useRef<number>(0);
+  const [, forceUpdate] = useState({});
+
+  useEffect(() => {
+    // Initialize game
+    gameRef.current = new CandyCrushGame(8, 8);
+    forceUpdate({});
+  }, []);
+
   const handleDraw = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, time: number) => {
-    // Get canvas dimensions (in CSS pixels)
-    const width = canvas.width / window.devicePixelRatio;
-    const height = canvas.height / window.devicePixelRatio;
+    if (!gameRef.current) return;
 
-    // Calculate center position
-    const centerX = width / 2;
-    const centerY = height / 2;
+    // Update time tracking
+    lastTimeRef.current = time;
 
-    // Square size
-    const size = 100;
+    // Update game logic
+    gameRef.current.update();
 
-    // Calculate rotation based on time (rotate once per 2 seconds)
-    const rotation = (time / 2000) * Math.PI * 2;
+    // Render game
+    gameRef.current.render(canvas, ctx);
+  };
 
-    // Save context state
-    ctx.save();
+  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!gameRef.current) return;
 
-    // Move to center
-    ctx.translate(centerX, centerY);
+    const canvas = event.currentTarget.querySelector('canvas');
+    if (!canvas) return;
 
-    // Rotate
-    ctx.rotate(rotation);
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
 
-    // Draw square centered at origin
-    ctx.fillStyle = "red";
-    ctx.fillRect(-size / 2, -size / 2, size, size);
-
-    // Restore context state
-    ctx.restore();
+    gameRef.current.handleClick(x, y);
   };
 
   return (
-    <div className="app-container">
+    <div className="app-container" onClick={handleCanvasClick}>
       <Canvas draw={handleDraw} />
     </div>
   );
