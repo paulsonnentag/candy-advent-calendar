@@ -28,20 +28,64 @@ export interface GameState {
 }
 
 export class CandyCrushGame {
+  // ============================================
+  // CONFIGURATION PARAMETERS
+  // ============================================
+
+  // Grid configuration
+  private readonly DEFAULT_GRID_WIDTH = 8;
+  private readonly DEFAULT_GRID_HEIGHT = 8;
+  private readonly DEFAULT_CELL_SIZE = 60;
+  private readonly MAX_CELL_SIZE = 80;
+
+  // Physics and animation speeds
+  private readonly GRAVITY = 0.15; // Candy falling acceleration
+  private readonly REMOVAL_SPEED = 0.02; // How fast candies scale down when removed
+  private readonly FADE_SPEED = 0.03; // How fast new candies fade in
+  private readonly PAUSE_DURATION = 30; // Frames to pause after removal
+
+  // Layout configuration
+  private readonly HEADER_HEIGHT = 60; // Space for title and stats
+  private readonly GRID_PADDING = 20; // Padding around the grid
+
+  // Font sizes (calculated dynamically based on canvas width)
+  private readonly TITLE_FONT_MIN = 16;
+  private readonly TITLE_FONT_MAX = 24;
+  private readonly TITLE_FONT_SCALE = 30; // width / scale = font size
+  private readonly STATS_FONT_MIN = 12;
+  private readonly STATS_FONT_MAX = 16;
+  private readonly STATS_FONT_SCALE = 40;
+
+  // Color scheme
+  private readonly CANDY_COLORS = [
+    "#2E7D32", // Rich Christmas green
+    "#C62828", // Rich Christmas red
+    "#F5F5DC", // Warm cream (instead of stark white)
+    "#DAA520", // Rich goldenrod
+    "#B0B0B0", // Warmer silver
+  ];
+
+  private readonly BACKGROUND_COLOR = "#1a2332"; // Dark navy background
+  private readonly GRID_BACKGROUND_COLOR = "#2d3f54"; // Muted slate blue
+  private readonly GRID_LINE_COLOR = "#1a2738"; // Subtle dark lines
+  private readonly TEXT_COLOR = "#F5F5DC"; // Cream text
+  private readonly SELECTION_COLOR = "#DAA520"; // Golden selection border
+  private readonly SELECTION_LINE_WIDTH = 4;
+
+  // ============================================
+  // STATE AND INTERNAL PROPERTIES
+  // ============================================
+
   private state: GameState;
-  private gravity = 0.15; // Reduced from 0.5 for slower falling
-  private removalSpeed = 0.02; // Reduced from 0.05 for slower removal
-  private fadeSpeed = 0.03; // Speed for fading in new candies
-  private pauseDuration = 30; // Frames to pause after removal
   private offsetX = 0;
   private offsetY = 0;
 
   constructor(gridWidth: number = 8, gridHeight: number = 8) {
     this.state = {
       grid: [],
-      gridWidth,
-      gridHeight,
-      cellSize: 60,
+      gridWidth: gridWidth || this.DEFAULT_GRID_WIDTH,
+      gridHeight: gridHeight || this.DEFAULT_GRID_HEIGHT,
+      cellSize: this.DEFAULT_CELL_SIZE,
       selectedCandy: null,
       isFalling: false,
       isRemoving: false,
@@ -49,7 +93,7 @@ export class CandyCrushGame {
       pauseTimer: 0,
       points: 0,
       tries: 0,
-      candyColors: ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F"],
+      candyColors: this.CANDY_COLORS,
     };
 
     this.initializeGrid();
@@ -144,7 +188,7 @@ export class CandyCrushGame {
         const targetY = candy.y;
         if (candy.renderY < targetY - 0.01) {
           // Still falling
-          candy.velocityY += this.gravity;
+          candy.velocityY += this.GRAVITY;
           candy.renderY += candy.velocityY;
 
           // Check if reached target
@@ -264,7 +308,7 @@ export class CandyCrushGame {
         const candy = this.state.grid[y][x];
         if (candy && candy.isNew) {
           // Fade in the candy
-          candy.opacity += this.fadeSpeed;
+          candy.opacity += this.FADE_SPEED;
           if (candy.opacity >= 1) {
             candy.opacity = 1;
             candy.isNew = false;
@@ -281,7 +325,7 @@ export class CandyCrushGame {
       for (let x = 0; x < this.state.gridWidth; x++) {
         const candy = this.state.grid[y][x];
         if (candy && candy.markedForRemoval) {
-          candy.scale -= this.removalSpeed;
+          candy.scale -= this.REMOVAL_SPEED;
           if (candy.scale <= 0) {
             this.state.grid[y][x] = null;
           } else {
@@ -296,7 +340,7 @@ export class CandyCrushGame {
     // When removal animation is done, trigger pause
     if (!anyRemoving) {
       this.state.isPaused = true;
-      this.state.pauseTimer = this.pauseDuration;
+      this.state.pauseTimer = this.PAUSE_DURATION;
     }
   }
 
@@ -357,31 +401,29 @@ export class CandyCrushGame {
     const height = canvas.height / window.devicePixelRatio;
 
     // Calculate cell size dynamically to fit the canvas
-    const headerHeight = 60; // Space for title and stats
-    const padding = 40; // Padding around the grid
-    const availableWidth = width - padding * 2;
-    const availableHeight = height - headerHeight - padding * 2;
+    const availableWidth = width - this.GRID_PADDING * 2;
+    const availableHeight = height - this.HEADER_HEIGHT - this.GRID_PADDING * 2;
 
     // Calculate cell size based on available space
     const cellSizeByWidth = availableWidth / this.state.gridWidth;
     const cellSizeByHeight = availableHeight / this.state.gridHeight;
-    this.state.cellSize = Math.min(cellSizeByWidth, cellSizeByHeight, 80); // Max 80px per cell
+    this.state.cellSize = Math.min(cellSizeByWidth, cellSizeByHeight, this.MAX_CELL_SIZE);
 
     // Calculate offset to center the grid
     const gridPixelWidth = this.state.gridWidth * this.state.cellSize;
     const gridPixelHeight = this.state.gridHeight * this.state.cellSize;
     this.offsetX = (width - gridPixelWidth) / 2;
-    this.offsetY = (height - gridPixelHeight) / 2 + headerHeight / 2;
+    this.offsetY = (height - gridPixelHeight) / 2 + this.HEADER_HEIGHT / 2;
 
-    // Draw background
-    ctx.fillStyle = "#2C3E50";
+    // Draw background with Christmas theme
+    ctx.fillStyle = this.BACKGROUND_COLOR;
     ctx.fillRect(0, 0, width, height);
 
     // Draw title and stats (scale font with canvas size)
-    const fontSize = Math.max(16, Math.min(24, width / 30));
-    const smallFontSize = Math.max(12, Math.min(16, width / 40));
+    const fontSize = Math.max(this.TITLE_FONT_MIN, Math.min(this.TITLE_FONT_MAX, width / this.TITLE_FONT_SCALE));
+    const smallFontSize = Math.max(this.STATS_FONT_MIN, Math.min(this.STATS_FONT_MAX, width / this.STATS_FONT_SCALE));
 
-    ctx.fillStyle = "#ECF0F1";
+    ctx.fillStyle = this.TEXT_COLOR;
     ctx.font = `bold ${fontSize}px Arial`;
     ctx.textAlign = "center";
     ctx.fillText("Candy Crush", width / 2, fontSize + 10);
@@ -393,11 +435,11 @@ export class CandyCrushGame {
     ctx.fillText(`Tries: ${this.state.tries}`, width - 20, fontSize + 10);
 
     // Draw grid background
-    ctx.fillStyle = "#34495E";
+    ctx.fillStyle = this.GRID_BACKGROUND_COLOR;
     ctx.fillRect(this.offsetX, this.offsetY, gridPixelWidth, gridPixelHeight);
 
     // Draw grid lines
-    ctx.strokeStyle = "#2C3E50";
+    ctx.strokeStyle = this.GRID_LINE_COLOR;
     ctx.lineWidth = 1;
     for (let x = 0; x <= this.state.gridWidth; x++) {
       ctx.beginPath();
@@ -425,9 +467,10 @@ export class CandyCrushGame {
     // Draw selection
     if (this.state.selectedCandy) {
       const { x, y } = this.state.selectedCandy;
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 4;
-      ctx.strokeRect(this.offsetX + x * this.state.cellSize + 2, this.offsetY + y * this.state.cellSize + 2, this.state.cellSize - 4, this.state.cellSize - 4);
+      ctx.strokeStyle = this.SELECTION_COLOR;
+      ctx.lineWidth = this.SELECTION_LINE_WIDTH;
+      const inset = this.SELECTION_LINE_WIDTH / 2;
+      ctx.strokeRect(this.offsetX + x * this.state.cellSize + inset, this.offsetY + y * this.state.cellSize + inset, this.state.cellSize - this.SELECTION_LINE_WIDTH, this.state.cellSize - this.SELECTION_LINE_WIDTH);
     }
   }
 
