@@ -61,7 +61,7 @@ export class CandyCrushGame {
   private readonly PAUSE_DURATION = 0; // Frames to pause after removal
 
   // Background image reveal
-  private readonly REVEAL_THRESHOLD = 0.7; // 30% of cells revealed triggers full reveal
+  private readonly REVEAL_THRESHOLD = 0.01; // 30% of cells revealed triggers full reveal
   private readonly REVEAL_SPEED = 0.3; // Speed of final reveal animation
   private readonly CANDY_FADEOUT_SPEED = 0.02; // Speed of candy fade during reveal
   private readonly GRID_FADEOUT_SPEED = 0.02; // Speed of grid fade during reveal
@@ -703,14 +703,48 @@ export class CandyCrushGame {
     }
     ctx.clip();
 
-    // Apply grayscale filter (fades from grayscale to color based on revealProgress)
+    // Apply grayscale effect using manual pixel manipulation
     const grayscaleAmount = 1 - this.state.revealProgress;
     if (grayscaleAmount > 0) {
-      ctx.filter = `grayscale(${grayscaleAmount * 100}%)`;
-    }
+      // Create a temporary canvas to process the image
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = scaledWidth;
+      tempCanvas.height = scaledHeight;
+      const tempCtx = tempCanvas.getContext("2d");
 
-    // Draw the image
-    ctx.drawImage(this.backgroundImage, imageX, imageY, scaledWidth, scaledHeight);
+      if (tempCtx) {
+        // Draw the original image to temp canvas
+        tempCtx.drawImage(this.backgroundImage, 0, 0, scaledWidth, scaledHeight);
+
+        // Get image data
+        const imageData = tempCtx.getImageData(0, 0, scaledWidth, scaledHeight);
+        const data = imageData.data;
+
+        // Process each pixel
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          // Calculate grayscale using luminosity method
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          // Interpolate between grayscale and original color
+          data[i] = gray * grayscaleAmount + r * (1 - grayscaleAmount);
+          data[i + 1] = gray * grayscaleAmount + g * (1 - grayscaleAmount);
+          data[i + 2] = gray * grayscaleAmount + b * (1 - grayscaleAmount);
+        }
+
+        // Put the modified image data back
+        tempCtx.putImageData(imageData, 0, 0);
+
+        // Draw the processed image
+        ctx.drawImage(tempCanvas, imageX, imageY);
+      }
+    } else {
+      // Draw the image directly if no grayscale needed
+      ctx.drawImage(this.backgroundImage, imageX, imageY, scaledWidth, scaledHeight);
+    }
 
     ctx.restore();
   }
