@@ -58,10 +58,10 @@ export class CandyCrushGame {
   private readonly GRAVITY = 0.15; // Candy falling acceleration
   private readonly REMOVAL_SPEED = 0.02; // How fast candies scale down when removed
   private readonly FADE_SPEED = 0.03; // How fast new candies fade in
-  private readonly PAUSE_DURATION = 30; // Frames to pause after removal
+  private readonly PAUSE_DURATION = 0; // Frames to pause after removal
 
   // Background image reveal
-  private readonly REVEAL_THRESHOLD = 0.01; // 30% of cells revealed triggers full reveal
+  private readonly REVEAL_THRESHOLD = 0.7; // 30% of cells revealed triggers full reveal
   private readonly REVEAL_SPEED = 0.3; // Speed of final reveal animation
   private readonly CANDY_FADEOUT_SPEED = 0.02; // Speed of candy fade during reveal
   private readonly GRID_FADEOUT_SPEED = 0.02; // Speed of grid fade during reveal
@@ -590,18 +590,10 @@ export class CandyCrushGame {
 
     // Draw title and stats (scale font with canvas size)
     const fontSize = Math.max(this.TITLE_FONT_MIN, Math.min(this.TITLE_FONT_MAX, width / this.TITLE_FONT_SCALE));
-    const smallFontSize = Math.max(this.STATS_FONT_MIN, Math.min(this.STATS_FONT_MAX, width / this.STATS_FONT_SCALE));
 
     ctx.fillStyle = this.TEXT_COLOR;
     ctx.font = `bold ${fontSize}px Arial`;
     ctx.textAlign = "center";
-    ctx.fillText("Candy Crush", width / 2, fontSize + 10);
-
-    ctx.font = `${smallFontSize}px Arial`;
-    ctx.textAlign = "left";
-    ctx.fillText(`Points: ${this.state.points}`, 20, fontSize + 10);
-    ctx.textAlign = "right";
-    ctx.fillText(`Tries: ${this.state.tries}`, width - 20, fontSize + 10);
 
     // Draw grid background
     ctx.fillStyle = this.GRID_BACKGROUND_COLOR;
