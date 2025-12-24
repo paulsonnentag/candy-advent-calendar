@@ -3,5 +3,30 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #1a2332;
+  background-color: #1a4d2e;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+*:focus {
+  outline: none;
+}
+
+button:focus,
+button:active {
+  outline: none;
+}
+
+::selection {
+  background: transparent;
+}
+
+::-moz-selection {
+  background: transparent;
 }

@@ -4,20 +4,40 @@ import AdventCalendar from "./AdventCalendar";
 import "./App.css";
 import { useEffect, useRef, useState } from "react";
 
+// LocalStorage utilities
+const SOLVED_PUZZLES_KEY = "advent-solved-puzzles";
+
+const getSolvedPuzzles = (): number[] => {
+  const stored = localStorage.getItem(SOLVED_PUZZLES_KEY);
+  return stored ? JSON.parse(stored) : [];
+};
+
+const markPuzzleAsSolved = (day: number) => {
+  const solved = getSolvedPuzzles();
+  if (!solved.includes(day)) {
+    solved.push(day);
+    localStorage.setItem(SOLVED_PUZZLES_KEY, JSON.stringify(solved));
+  }
+};
+
 function App() {
   const gameRef = useRef<CandyCrushGame | null>(null);
   const lastTimeRef = useRef<number>(0);
   const [, forceUpdate] = useState({});
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [solvedPuzzles, setSolvedPuzzles] = useState<number[]>(getSolvedPuzzles());
 
   useEffect(() => {
-    if (selectedImage) {
+    if (selectedImage && selectedDay !== null) {
+      // Check if puzzle is already solved
+      const isSolved = solvedPuzzles.includes(selectedDay);
+
       // Initialize game with selected background image
-      gameRef.current = new CandyCrushGame(8, 8, selectedImage);
+      gameRef.current = new CandyCrushGame(8, 8, selectedImage, isSolved);
       forceUpdate({});
     }
-  }, [selectedImage]);
+  }, [selectedImage, selectedDay, solvedPuzzles]);
 
   const handleDraw = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, time: number) => {
     if (!gameRef.current) return;
@@ -27,6 +47,13 @@ function App() {
 
     // Update game logic
     gameRef.current.update();
+
+    // Check if game is complete and save to localStorage
+    const gameState = gameRef.current.getState();
+    if (gameState.isComplete && selectedDay !== null && !solvedPuzzles.includes(selectedDay)) {
+      markPuzzleAsSolved(selectedDay);
+      setSolvedPuzzles(getSolvedPuzzles());
+    }
 
     // Render game
     gameRef.current.render(canvas, ctx);
@@ -58,7 +85,7 @@ function App() {
 
   // Show advent calendar if no day is selected
   if (selectedDay === null) {
-    return <AdventCalendar onDaySelect={handleDaySelect} />;
+    return <AdventCalendar onDaySelect={handleDaySelect} solvedPuzzles={solvedPuzzles} />;
   }
 
   // Show game for selected day
@@ -68,6 +95,7 @@ function App() {
         <button className="back-button" onClick={handleBackToCalendar}>
           ← Back to Calendar
         </button>
+        <div className="day-number-display">Day {selectedDay}</div>
       </div>
       <div className="game-container" onClick={handleCanvasClick}>
         <Canvas draw={handleDraw} />

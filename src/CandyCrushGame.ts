@@ -96,9 +96,9 @@ export class CandyCrushGame {
     "#B0B0B0", // Warmer silver
   ];
 
-  private readonly BACKGROUND_COLOR = "#1a2332"; // Dark navy background
-  private readonly GRID_BACKGROUND_COLOR = "#2d3f54"; // Muted slate blue
-  private readonly GRID_LINE_COLOR = "#1a2738"; // Subtle dark lines
+  private readonly BACKGROUND_COLOR = "#1a4d2e"; // Dark forest green background
+  private readonly GRID_BACKGROUND_COLOR = "#2d5f3f"; // Muted forest green
+  private readonly GRID_LINE_COLOR = "#1a4d2e"; // Subtle dark green lines
   private readonly TEXT_COLOR = "#F5F5DC"; // Cream text
   private readonly SELECTION_COLOR = "#DAA520"; // Golden selection border
   private readonly SELECTION_LINE_WIDTH = 4;
@@ -113,7 +113,7 @@ export class CandyCrushGame {
   private backgroundImage: HTMLImageElement | null = null;
   private imageLoaded = false;
 
-  constructor(gridWidth: number = 8, gridHeight: number = 8, backgroundImagePath?: string) {
+  constructor(gridWidth: number = 8, gridHeight: number = 8, backgroundImagePath?: string, startSolved: boolean = false) {
     const width = gridWidth || this.DEFAULT_GRID_WIDTH;
     const height = gridHeight || this.DEFAULT_GRID_HEIGHT;
 
@@ -132,13 +132,13 @@ export class CandyCrushGame {
       candyColors: this.CANDY_COLORS,
       revealedCells: Array(height)
         .fill(null)
-        .map(() => Array(width).fill(false)),
+        .map(() => Array(width).fill(startSolved)),
       isRevealing: false,
-      revealProgress: 0,
-      candyFadeOut: 1,
-      gridFadeOut: 1,
+      revealProgress: startSolved ? 1 : 0,
+      candyFadeOut: startSolved ? 0 : 1,
+      gridFadeOut: startSolved ? 0 : 1,
       snowflakes: [],
-      isComplete: false,
+      isComplete: startSolved,
     };
 
     this.initializeGrid();
@@ -146,6 +146,11 @@ export class CandyCrushGame {
     // Load background image if provided
     if (backgroundImagePath) {
       this.loadBackgroundImage(backgroundImagePath);
+    }
+
+    // If starting solved, initialize snow immediately
+    if (startSolved) {
+      this.initializeSnow();
     }
   }
 

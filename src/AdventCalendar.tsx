@@ -31,9 +31,10 @@ const images = [day1, day2, day3, day4, day5, day6, day7, day8, day9, day10, day
 
 interface AdventCalendarProps {
   onDaySelect: (day: number, imagePath: string) => void;
+  solvedPuzzles: number[];
 }
 
-function AdventCalendar({ onDaySelect }: AdventCalendarProps) {
+function AdventCalendar({ onDaySelect, solvedPuzzles }: AdventCalendarProps) {
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
   // Check if a day is unlocked (current date is on or after that day in December 2025)
@@ -56,8 +57,10 @@ function AdventCalendar({ onDaySelect }: AdventCalendarProps) {
       <div className="calendar-grid">
         {Array.from({ length: 24 }, (_, i) => i + 1).map((day) => {
           const isUnlocked = isDayUnlocked(day);
+          const isSolved = solvedPuzzles.includes(day);
           return (
-            <div key={day} className={`calendar-door ${isUnlocked ? "unlocked" : "locked"} ${hoveredDay === day ? "hovered" : ""}`} onClick={() => handleDoorClick(day)} onMouseEnter={() => setHoveredDay(day)} onMouseLeave={() => setHoveredDay(null)}>
+            <div key={day} className={`calendar-door ${isUnlocked ? "unlocked" : "locked"} ${isSolved ? "solved" : ""} ${hoveredDay === day ? "hovered" : ""}`} onClick={() => handleDoorClick(day)} onMouseEnter={() => setHoveredDay(day)} onMouseLeave={() => setHoveredDay(null)}>
+              {isSolved && <img src={images[day - 1]} alt={`Day ${day}`} className="door-image" />}
               <div className="door-content">
                 <div className="door-number">{day}</div>
                 {!isUnlocked && <div className="lock-icon">🔒</div>}
