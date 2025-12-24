@@ -3,7 +3,9 @@
 export interface Candy {
   x: number; // grid position
   y: number; // grid position
-  renderY: number; // actual render position with physics
+  renderX: number; // actual render X position for swap animation
+  renderY: number; // actual render Y position with physics
+  velocityX: number; // horizontal velocity for swapping
   velocityY: number; // falling velocity
   type: number; // candy type/color (0-5)
   scale: number; // for animation
@@ -28,6 +30,7 @@ export interface GameState {
   cellSize: number;
   selectedCandy: { x: number; y: number } | null;
   isFalling: boolean;
+  isSwapping: boolean;
   isRemoving: boolean;
   isPaused: boolean;
   pauseTimer: number;
@@ -56,12 +59,13 @@ export class CandyCrushGame {
 
   // Physics and animation speeds
   private readonly GRAVITY = 0.15; // Candy falling acceleration
-  private readonly REMOVAL_SPEED = 0.02; // How fast candies scale down when removed
-  private readonly FADE_SPEED = 0.03; // How fast new candies fade in
+  private readonly SWAP_SPEED = 0.25; // How fast candies move during swap
+  private readonly REMOVAL_SPEED = 0.08; // How fast candies scale down when removed
+  private readonly FADE_SPEED = 0.15; // How fast new candies fade in
   private readonly PAUSE_DURATION = 0; // Frames to pause after removal
 
   // Background image reveal
-  private readonly REVEAL_THRESHOLD = 0.01; // 30% of cells revealed triggers full reveal
+  private readonly REVEAL_THRESHOLD = 0.5; // 30% of cells revealed triggers full reveal
   private readonly REVEAL_SPEED = 0.3; // Speed of final reveal animation
   private readonly CANDY_FADEOUT_SPEED = 0.02; // Speed of candy fade during reveal
   private readonly GRID_FADEOUT_SPEED = 0.02; // Speed of grid fade during reveal
@@ -83,9 +87,6 @@ export class CandyCrushGame {
   private readonly TITLE_FONT_MIN = 16;
   private readonly TITLE_FONT_MAX = 24;
   private readonly TITLE_FONT_SCALE = 30; // width / scale = font size
-  private readonly STATS_FONT_MIN = 12;
-  private readonly STATS_FONT_MAX = 16;
-  private readonly STATS_FONT_SCALE = 40;
 
   // Color scheme
   private readonly CANDY_COLORS = [
@@ -124,6 +125,7 @@ export class CandyCrushGame {
       cellSize: this.DEFAULT_CELL_SIZE,
       selectedCandy: null,
       isFalling: false,
+      isSwapping: false,
       isRemoving: false,
       isPaused: false,
       pauseTimer: 0,
@@ -200,7 +202,9 @@ export class CandyCrushGame {
     return {
       x,
       y,
+      renderX: x,
       renderY: startAbove ? y - 10 : y,
+      velocityX: 0,
       velocityY: 0,
       type: Math.floor(Math.random() * this.state.candyColors.length),
       scale: 1,
@@ -229,6 +233,12 @@ export class CandyCrushGame {
         this.state.isPaused = false;
       }
       return; // Don't update anything else during pause
+    }
+
+    // Update swap animation
+    if (this.state.isSwapping) {
+      this.updateSwapAnimation();
+      return;
     }
 
     // Update removal animation
@@ -291,6 +301,12 @@ export class CandyCrushGame {
               this.state.grid[y][x] = aboveCandy;
               this.state.grid[above][x] = null;
               aboveCandy.y = y;
+              aboveCandy.x = x;
+              aboveCandy.renderX = x;
+              // Make sure falling candies are fully opaque
+              if (!aboveCandy.isNew) {
+                aboveCandy.opacity = 1;
+              }
               anyFalling = true;
               break;
             }
@@ -384,11 +400,54 @@ export class CandyCrushGame {
     }
   }
 
+  private updateSwapAnimation() {
+    let anySwapping = false;
+
+    for (let y = 0; y < this.state.gridHeight; y++) {
+      for (let x = 0; x < this.state.gridWidth; x++) {
+        const candy = this.state.grid[y][x];
+        if (!candy) continue;
+
+        // Animate X position
+        const targetX = candy.x;
+        if (Math.abs(candy.renderX - targetX) > 0.01) {
+          const dx = targetX - candy.renderX;
+          candy.velocityX = dx * this.SWAP_SPEED;
+          candy.renderX += candy.velocityX;
+
+          if (Math.abs(candy.renderX - targetX) < 0.01) {
+            candy.renderX = targetX;
+            candy.velocityX = 0;
+          } else {
+            anySwapping = true;
+          }
+        }
+
+        // Animate Y position
+        const targetY = candy.y;
+        if (Math.abs(candy.renderY - targetY) > 0.01) {
+          const dy = targetY - candy.renderY;
+          candy.velocityY = dy * this.SWAP_SPEED;
+          candy.renderY += candy.velocityY;
+
+          if (Math.abs(candy.renderY - targetY) < 0.01) {
+            candy.renderY = targetY;
+            candy.velocityY = 0;
+          } else {
+            anySwapping = true;
+          }
+        }
+      }
+    }
+
+    this.state.isSwapping = anySwapping;
+  }
+
   private updateFadeIn() {
     for (let y = 0; y < this.state.gridHeight; y++) {
       for (let x = 0; x < this.state.gridWidth; x++) {
         const candy = this.state.grid[y][x];
-        if (candy && candy.isNew) {
+        if (candy && candy.isNew && candy.opacity < 1) {
           // Fade in the candy
           candy.opacity += this.FADE_SPEED;
           if (candy.opacity >= 1) {
@@ -534,7 +593,7 @@ export class CandyCrushGame {
       return;
     }
 
-    if (this.state.isFalling || this.state.isRemoving || this.state.isPaused || this.state.isRevealing) {
+    if (this.state.isFalling || this.state.isSwapping || this.state.isRemoving || this.state.isPaused || this.state.isRevealing) {
       return; // Don't allow clicks during animation, pause, or reveal
     }
 
@@ -567,15 +626,16 @@ export class CandyCrushGame {
     this.state.grid[y1][x1] = candy2;
     this.state.grid[y2][x2] = candy1;
 
-    // Update positions
+    // Update target positions (but keep render positions for animation)
     const tempX = candy1.x;
     const tempY = candy1.y;
     candy1.x = candy2.x;
     candy1.y = candy2.y;
-    candy1.renderY = candy2.renderY;
     candy2.x = tempX;
     candy2.y = tempY;
-    candy2.renderY = tempY;
+
+    // Start swap animation
+    this.state.isSwapping = true;
   }
 
   render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
@@ -677,7 +737,7 @@ export class CandyCrushGame {
   }
 
   private drawCandy(ctx: CanvasRenderingContext2D, candy: Candy) {
-    const centerX = this.offsetX + candy.x * this.state.cellSize + this.state.cellSize / 2;
+    const centerX = this.offsetX + candy.renderX * this.state.cellSize + this.state.cellSize / 2;
     const centerY = this.offsetY + candy.renderY * this.state.cellSize + this.state.cellSize / 2;
     const radius = this.state.cellSize * 0.4 * candy.scale;
 
