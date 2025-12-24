@@ -92,7 +92,7 @@ export class CandyCrushGame {
   private readonly CANDY_COLORS = [
     "#2E7D32", // Rich Christmas green
     "#C62828", // Rich Christmas red
-    "#F5F5DC", // Warm cream (instead of stark white)
+    "#1E88E5", // Blue
     "#DAA520", // Rich goldenrod
     "#B0B0B0", // Warmer silver
   ];
@@ -748,19 +748,56 @@ export class CandyCrushGame {
     // Apply opacity (including fade out during reveal)
     ctx.globalAlpha = candy.opacity * this.state.candyFadeOut;
 
-    // Draw candy as a circle with a highlight
-    ctx.fillStyle = this.state.candyColors[candy.type];
+    // Create radial gradient for shiny effect
+    const gradient = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, 0, 0, 0, radius);
+
+    // Get base color and create lighter/darker variants
+    const baseColor = this.state.candyColors[candy.type];
+
+    // Add gradient stops for shiny ball effect
+    gradient.addColorStop(0, this.lightenColor(baseColor, 60)); // Bright highlight
+    gradient.addColorStop(0.3, this.lightenColor(baseColor, 30)); // Mid highlight
+    gradient.addColorStop(0.7, baseColor); // Base color
+    gradient.addColorStop(1, this.darkenColor(baseColor, 30)); // Shadow edge
+
+    // Draw candy as a circle with gradient
+    ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Add shine effect
-    ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+    // Add extra bright shine spot
+    const shineGradient = ctx.createRadialGradient(-radius * 0.35, -radius * 0.35, 0, -radius * 0.35, -radius * 0.35, radius * 0.25);
+    shineGradient.addColorStop(0, "rgba(255, 255, 255, 0.8)");
+    shineGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.4)");
+    shineGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+
+    ctx.fillStyle = shineGradient;
     ctx.beginPath();
-    ctx.arc(-radius * 0.3, -radius * 0.3, radius * 0.4, 0, Math.PI * 2);
+    ctx.arc(-radius * 0.35, -radius * 0.35, radius * 0.25, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
+  }
+
+  // Helper function to lighten a color
+  private lightenColor(color: string, percent: number): string {
+    const num = parseInt(color.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.min(255, ((num >> 16) & 0xFF) + amt);
+    const G = Math.min(255, ((num >> 8) & 0xFF) + amt);
+    const B = Math.min(255, (num & 0xFF) + amt);
+    return `rgb(${R}, ${G}, ${B})`;
+  }
+
+  // Helper function to darken a color
+  private darkenColor(color: string, percent: number): string {
+    const num = parseInt(color.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.max(0, ((num >> 16) & 0xFF) - amt);
+    const G = Math.max(0, ((num >> 8) & 0xFF) - amt);
+    const B = Math.max(0, (num & 0xFF) - amt);
+    return `rgb(${R}, ${G}, ${B})`;
   }
 
   private drawBackgroundImage(ctx: CanvasRenderingContext2D, gridPixelWidth: number, gridPixelHeight: number) {

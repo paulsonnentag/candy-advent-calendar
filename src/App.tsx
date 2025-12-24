@@ -93,10 +93,10 @@ function App() {
     <div className="app-container">
       <div className="back-button-container">
         <button className="back-button" onClick={handleBackToCalendar}>
-          ← Back to Calendar
+          Back
         </button>
-        <div className="day-number-display">Day {selectedDay}</div>
       </div>
+      <div className="day-number-display">Day {selectedDay}</div>
       <div className="game-container" onClick={handleCanvasClick}>
         <Canvas draw={handleDraw} />
       </div>
