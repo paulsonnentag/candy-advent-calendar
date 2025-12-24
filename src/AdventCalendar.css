@@ -1,0 +1,154 @@
+.advent-calendar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: #1a2332;
+  overflow-y: auto;
+}
+
+.advent-title {
+  color: #F5F5DC;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 15px;
+  max-width: 1200px;
+  width: 100%;
+  padding: 20px;
+}
+
+.calendar-door {
+  aspect-ratio: 1;
+  background: linear-gradient(145deg, #2d3f54, #1a2738);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border: 2px solid #3a4f64;
+  position: relative;
+  overflow: hidden;
+}
+
+.calendar-door.unlocked:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(218, 165, 32, 0.4);
+  border-color: #DAA520;
+}
+
+.calendar-door.locked {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.calendar-door.locked:hover {
+  transform: none;
+}
+
+.door-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+}
+
+.door-number {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #F5F5DC;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.lock-icon {
+  font-size: 1.5rem;
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  opacity: 0.7;
+}
+
+/* Christmas decorations */
+.calendar-door::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.1), transparent);
+  pointer-events: none;
+}
+
+/* Unlocked door glow effect */
+.calendar-door.unlocked::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #C62828, #2E7D32, #DAA520);
+  border-radius: 12px;
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.3s ease;
+}
+
+.calendar-door.unlocked:hover::after {
+  opacity: 0.3;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .advent-title {
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+  }
+
+  .calendar-grid {
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .door-number {
+    font-size: 1.8rem;
+  }
+
+  .lock-icon {
+    font-size: 1.2rem;
+    bottom: 5px;
+    right: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .door-number {
+    font-size: 1.5rem;
+  }
+}
+
+
+

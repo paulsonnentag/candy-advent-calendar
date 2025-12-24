@@ -1,19 +1,23 @@
 import { Canvas } from "./Canvas";
 import { CandyCrushGame } from "./CandyCrushGame";
+import AdventCalendar from "./AdventCalendar";
 import "./App.css";
 import { useEffect, useRef, useState } from "react";
-import backgroundImage from "./assets/fotos/2.jpeg";
 
 function App() {
   const gameRef = useRef<CandyCrushGame | null>(null);
   const lastTimeRef = useRef<number>(0);
   const [, forceUpdate] = useState({});
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initialize game with background image
-    gameRef.current = new CandyCrushGame(8, 8, backgroundImage);
-    forceUpdate({});
-  }, []);
+    if (selectedImage) {
+      // Initialize game with selected background image
+      gameRef.current = new CandyCrushGame(8, 8, selectedImage);
+      forceUpdate({});
+    }
+  }, [selectedImage]);
 
   const handleDraw = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, time: number) => {
     if (!gameRef.current) return;
@@ -41,9 +45,33 @@ function App() {
     gameRef.current.handleClick(x, y);
   };
 
+  const handleDaySelect = (day: number, imagePath: string) => {
+    setSelectedDay(day);
+    setSelectedImage(imagePath);
+  };
+
+  const handleBackToCalendar = () => {
+    setSelectedDay(null);
+    setSelectedImage(null);
+    gameRef.current = null;
+  };
+
+  // Show advent calendar if no day is selected
+  if (selectedDay === null) {
+    return <AdventCalendar onDaySelect={handleDaySelect} />;
+  }
+
+  // Show game for selected day
   return (
-    <div className="app-container" onClick={handleCanvasClick}>
-      <Canvas draw={handleDraw} />
+    <div className="app-container">
+      <div className="back-button-container">
+        <button className="back-button" onClick={handleBackToCalendar}>
+          ← Back to Calendar
+        </button>
+      </div>
+      <div className="game-container" onClick={handleCanvasClick}>
+        <Canvas draw={handleDraw} />
+      </div>
     </div>
   );
 }

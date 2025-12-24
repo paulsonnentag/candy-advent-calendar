@@ -12,6 +12,41 @@
   flex-direction: column;
 }
 
+.back-button-container {
+  padding: 10px;
+  background-color: #1a2332;
+}
+
+.back-button {
+  background: linear-gradient(145deg, #2d3f54, #1a2738);
+  color: #f5f5dc;
+  border: 2px solid #daa520;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.back-button:hover {
+  background: linear-gradient(145deg, #3a4f64, #2d3f54);
+  box-shadow: 0 4px 8px rgba(218, 165, 32, 0.4);
+  transform: translateY(-2px);
+}
+
+.back-button:active {
+  transform: translateY(0);
+}
+
+.game-container {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .canvas-container {
   flex: 1;
   width: 100%;
